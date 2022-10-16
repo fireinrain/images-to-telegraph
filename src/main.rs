@@ -24,6 +24,21 @@ struct TelegraphAccount {
     pub page_count: Option<i32>,
 }
 
+impl Clone for TelegraphAccount {
+    fn clone(&self) -> Self {
+        return TelegraphAccount{
+            id: self.id,
+            short_name: Option::from(self.short_name.as_ref().unwrap().to_string()),
+            author_name: Option::from(self.author_name.as_ref().unwrap().to_string()),
+            author_url: Option::from(self.auth_url.as_ref().unwrap().to_string()),
+            access_token: Option::from(self.access_token.as_ref().unwrap().to_string()),
+            auth_url: Option::from(self.auth_url.as_ref().unwrap().to_string()),
+            page_count: Option::from(self.page_count.unwrap())
+        }
+    }
+}
+
+
 fn main() {
     // 找到用户目录
     let home_path = match home::home_dir() {
@@ -124,6 +139,8 @@ fn main() {
     let conn = Connection::open(&db_file_path).unwrap();
     let account_query_str = "select * from account limit 1";
     let mut statement = conn.prepare(account_query_str).unwrap();
+
+    let exist_account:TelegraphAccount;
     if !statement.exists([]).unwrap() {
         println!("No account in local db file!");
         // 获取用户输入创建账号
@@ -149,7 +166,10 @@ fn main() {
                         auth_url: tg_account.auth_url,
                         page_count: tg_account.page_count,
                     };
-                    let insert_sql = "insert into account(short_name,author_name,author_url,access_token,author_url,page_count) values (?1,?2,?3,?4,?5,?6)";
+                    println!("{:#?}",telegraph_account);
+                    exist_account = telegraph_account.clone();
+
+                    let insert_sql = "insert into account(short_name,author_name,author_url,access_token,auth_url,page_count) values (?1,?2,?3,?4,?5,?6)";
                     let page_count = match telegraph_account.page_count {
                         None => { 0 }
                         Some(value) => { value }
@@ -185,7 +205,7 @@ fn main() {
         }
     } else {
         // 已经有账号
-        let result_iter = statement.query_map([], |row| {
+        let mut result_iter = statement.query_map([], |row| {
             Ok(TelegraphAccount {
                 id: row.get(0)?,
                 short_name: row.get(1)?,
@@ -197,14 +217,18 @@ fn main() {
             })
         }).unwrap();
         for account in result_iter {
-            println!("Found account in db {:?}", account.unwrap());
+            exist_account = account.unwrap();
+            println!("Found account in db {:#?}", exist_account);
+            break;
         }
+
     }
     println!("use local db account for default...");
     // 上传新的post 到telegraph 并将浏览链接
     // 保存到db
-    // let telegraph = Telegraph::new();
-    // let mut page = telegraph.create_page();
+    // println!("{:#?}",exist_account);
+    let telegraph = Telegraph::new();
+    let mut page = telegraph.create_page();
     // page.author_name("Fireinrain").
     //     title("hello world")
     //     .send().expect("error");
