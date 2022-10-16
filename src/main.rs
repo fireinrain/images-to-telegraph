@@ -1,8 +1,8 @@
 use std::{fs, io, panic};
 use std::io::{BufRead, Write};
-use std::path::{Path, PathBuf};
+use std::path::{Path};
 use telegraph_rs::telegraph::Telegraph;
-use rusqlite::{Connection, Result};
+use rusqlite::{Connection};
 
 
 const USER_HOME_DIR: &str = ".images-to-telegraph";
@@ -11,7 +11,7 @@ const DB_FILE_NAME: &str = "images2telegraph.db";
 // 账户
 type Account = telegraph_rs::types::Account;
 
-fn main() -> Result<()> {
+fn main() {
     // 找到用户目录
     let home_path = match home::home_dir() {
         None => {
@@ -41,7 +41,7 @@ fn main() -> Result<()> {
     println!("Telegraph db file path: {}", db_file_path.display());
 
     if !db_file_path.exists() {
-        let conn = Connection::open(&db_file_path)?;
+        let conn = Connection::open(&db_file_path).unwrap();
 
         let account_sql = "create table  if not exists account(
             id    INTEGER PRIMARY KEY,
@@ -53,7 +53,7 @@ fn main() -> Result<()> {
         )";
         // 创建用户表
         // empty list of parameters.
-        let success_flag = conn.execute(account_sql, ())?;
+        let success_flag = conn.execute(account_sql, ()).unwrap();
         if success_flag > 0 {
             println!("创建account表成功!")
         }
@@ -66,16 +66,16 @@ fn main() -> Result<()> {
             update_time TEXT NOT NULL
         )";
         // 创建post表
-        let success_flag = conn.execute(post_sql, ())?;
+        let success_flag = conn.execute(post_sql, ()).unwrap();
         if success_flag > 0 {
             println!("创建post表成功!")
         }
-    }else {
+    } else {
         //存在db 但是不存在表
-        let conn = Connection::open(&db_file_path)?;
+        let conn = Connection::open(&db_file_path).unwrap();
         let tables_str = "select tbl_name from sqlite_master where tbl_name in ('account','post')";
-        let mut sts = conn.prepare(tables_str)?;
-        if !sts.exists([])?{
+        let mut sts = conn.prepare(tables_str).unwrap();
+        if !sts.exists([]).unwrap() {
             let account_sql = "create table  if not exists account(
             id    INTEGER PRIMARY KEY,
             short_name  TEXT NOT NULL,
@@ -86,7 +86,7 @@ fn main() -> Result<()> {
         )";
             // 创建用户表
             // empty list of parameters.
-            let success_flag = conn.execute(account_sql, ())?;
+            let success_flag = conn.execute(account_sql, ()).unwrap();
             if success_flag > 0 {
                 println!("创建account表成功!")
             }
@@ -99,23 +99,22 @@ fn main() -> Result<()> {
             update_time TEXT NOT NULL
         )";
             // 创建post表
-            let success_flag = conn.execute(post_sql, ())?;
+            let success_flag = conn.execute(post_sql, ()).unwrap();
             if success_flag > 0 {
                 println!("创建post表成功!")
             }
-
         }
     }
     // 有db文件是否已经创建了账户
-    let conn = Connection::open(&db_file_path)?;
+    let mut conn = Connection::open(&db_file_path).unwrap();
     let account_query_str = "select * from account limit 1";
-    let mut statement = conn.prepare(account_query_str)?;
-    if !statement.exists([])?{
+    let mut statement = conn.prepare(account_query_str).unwrap();
+    if !statement.exists([]).unwrap() {
         println!("当前数据库中暂无账号!");
         // 获取用户输入创建账号
         let need_create_account = prompt("是否需要创建telegraph账户? (yY/nN): ");
         match need_create_account {
-            Some( value) => {
+            Some(value) => {
                 if value.trim() == "y" {
                     let telegraph = Telegraph::new();
 
@@ -128,31 +127,47 @@ fn main() -> Result<()> {
                     let telegraph_account = Account {
                         ..tg_account
                     };
-                    println!("{:#?}",telegraph_account)
-
-                }else {
+                    let insert_sql = "insert into account(short_name,author_name,access_token,author_url,page_count) values (?1,?2,?3,?4,?5)";
+                    let counts = conn.execute(insert_sql, (
+                        telegraph_account.short_name.unwrap(),
+                        telegraph_account.author_name.unwrap(),
+                        telegraph_account.access_token.unwrap(),
+                        telegraph_account.author_url.unwrap(),
+                        telegraph_account.auth_url.unwrap()));
+                    match counts {
+                        Ok(value) => {
+                            println!("insert {} row to account success!", value);
+                            println!("create telegraph account success!");
+                        }
+                        Err(_) => {
+                            println!("insert row to account failed!");
+                        }
+                    }
+                } else {
                     println!("创建telegraph账户已取消！");
                 }
-            },
-            None =>{
+            }
+            None => {
                 // println!("创建telegraph账户已取消！");
                 // ignore
             }
         }
-    }else {
+    } else {
         // 已经有账号
-        let _result_iter = statement.query_map([], |row| {
+        let result_iter = statement.query_map([], |row| {
             Ok(Account {
                 short_name: row.get(0)?,
                 author_name: row.get(1)?,
                 author_url: row.get(2)?,
                 access_token: row.get(3)?,
                 auth_url: row.get(4)?,
-                page_count: row.get(5)?
+                page_count: row.get(5)?,
             })
-        })?;
+        }).unwrap();
+        for account in result_iter {
+            println!("Found account in db {:?}", account.unwrap());
+        }
     }
-
 
 
     // 没有账户创建账户
@@ -161,12 +176,10 @@ fn main() -> Result<()> {
     // 保存到db
 
 
-
     // let mut page = telegraph.create_page();
     // page.author_name("Fireinrain").
     //     title("hello world")
     //     .send().expect("error");
-    Ok(())
 }
 
 // 等待用户输入
