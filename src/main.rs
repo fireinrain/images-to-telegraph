@@ -10,8 +10,19 @@ use rusqlite::{Connection};
 const USER_HOME_DIR: &str = ".images-to-telegraph";
 const DB_FILE_NAME: &str = "images2telegraph.db";
 
+
 // 账户
-pub type Account = telegraph_rs::types::Account;
+#[allow(dead_code)]
+#[derive(Debug)]
+struct TelegraphAccount {
+    pub id: Option<i32>,
+    pub short_name: Option<String>,
+    pub author_name: Option<String>,
+    pub author_url: Option<String>,
+    pub access_token: Option<String>,
+    pub auth_url: Option<String>,
+    pub page_count: Option<i32>,
+}
 
 fn main() {
     // 找到用户目录
@@ -46,9 +57,10 @@ fn main() {
         let conn = Connection::open(&db_file_path).unwrap();
 
         let account_sql = "create table  if not exists account(
-            id    INTEGER AUTOINCREMENT PRIMARY KEY,
+            id    INTEGER PRIMARY KEY AUTOINCREMENT,
             short_name  TEXT NOT NULL,
             author_name TEXT NOT NULL,
+            author_url TEXT NOT NULL,
             access_token TEXT NOT NULL,
             auth_url TEXT NOT NULL,
             page_count  INTEGER
@@ -60,7 +72,7 @@ fn main() {
             println!("Create table account success!")
         }
         let post_sql = "create table if not exists post(
-            id    INTEGER AUTOINCREMENT PRIMARY KEY,
+            id    INTEGER PRIMARY KEY AUTOINCREMENT,
             images_folder  TEXT NOT NULL,
             folder_hash TEXT NOT NULL,
             photo_counts INTEGER,
@@ -79,9 +91,10 @@ fn main() {
         let mut sts = conn.prepare(tables_str).unwrap();
         if !sts.exists([]).unwrap() {
             let account_sql = "create table  if not exists account(
-            id    INTEGER AUTOINCREMENT PRIMARY KEY,
+            id    INTEGER PRIMARY KEY AUTOINCREMENT,
             short_name  TEXT NOT NULL,
             author_name TEXT NOT NULL,
+            author_url TEXT NOT NULL,
             access_token TEXT NOT NULL,
             auth_url TEXT NOT NULL,
             page_count  INTEGER
@@ -93,7 +106,7 @@ fn main() {
                 println!("Create table account success!")
             }
             let post_sql = "create table if not exists post(
-            id    INTEGER AUTOINCREMENT PRIMARY KEY,
+            id    INTEGER PRIMARY KEY AUTOINCREMENT,
             images_folder  TEXT NOT NULL,
             folder_hash TEXT NOT NULL,
             photo_counts INTEGER,
@@ -118,31 +131,46 @@ fn main() {
         match need_create_account {
             Some(value) => {
                 if value.trim() == "y" {
+                    // 没有账户创建账户
                     let telegraph = Telegraph::new();
 
                     let mut account = telegraph.create_account();
                     let tg_account = account.short_name("Fireinrain")
                         .author_name("Fireinrain with cosmos")
                         .author_url("https://fireinrain.github.io").send().unwrap();
-                    // println!("{:#?}",tg_account);
+                    println!("{:#?}",tg_account);
                     //存入本地db
-                    let telegraph_account = Account {
-                        ..tg_account
+                    let telegraph_account = TelegraphAccount {
+                        id: None,
+                        short_name: tg_account.short_name,
+                        author_name: tg_account.author_name,
+                        author_url: tg_account.author_url,
+                        access_token: tg_account.access_token,
+                        auth_url: tg_account.auth_url,
+                        page_count: tg_account.page_count,
                     };
-                    let insert_sql = "insert into account(short_name,author_name,access_token,author_url,page_count) values (?1,?2,?3,?4,?5)";
+                    let insert_sql = "insert into account(short_name,author_name,author_url,access_token,author_url,page_count) values (?1,?2,?3,?4,?5,?6)";
+                    let page_count = match telegraph_account.page_count {
+                        None => { 0 }
+                        Some(value) => { value }
+                    };
+
                     let counts = conn.execute(insert_sql, (
                         &telegraph_account.short_name.unwrap(),
                         &telegraph_account.author_name.unwrap(),
-                        &telegraph_account.access_token.unwrap(),
                         &telegraph_account.author_url.unwrap(),
-                        &telegraph_account.auth_url.unwrap()));
+                        &telegraph_account.access_token.unwrap(),
+                        &telegraph_account.auth_url.unwrap(),
+                        page_count,
+                    ));
 
                     match counts {
                         Ok(value) => {
                             println!("insert {} row to account success!", value);
                             println!("create telegraph account success!");
                         }
-                        Err(_) => {
+                        Err(e) => {
+                            println!("{}", e);
                             println!("insert row to account failed!");
                         }
                     }
@@ -158,27 +186,24 @@ fn main() {
     } else {
         // 已经有账号
         let result_iter = statement.query_map([], |row| {
-            Ok(Account {
-                short_name: row.get(0)?,
-                author_name: row.get(1)?,
-                author_url: row.get(2)?,
-                access_token: row.get(3)?,
-                auth_url: row.get(4)?,
-                page_count: row.get(5)?,
+            Ok(TelegraphAccount {
+                id: row.get(0)?,
+                short_name: row.get(1)?,
+                author_name: row.get(2)?,
+                author_url: row.get(3)?,
+                access_token: row.get(4)?,
+                auth_url: row.get(5)?,
+                page_count: row.get(6)?,
             })
         }).unwrap();
         for account in result_iter {
             println!("Found account in db {:?}", account.unwrap());
         }
     }
-
-
-    // 没有账户创建账户
-
+    println!("use local db account for default...");
     // 上传新的post 到telegraph 并将浏览链接
     // 保存到db
-
-
+    // let telegraph = Telegraph::new();
     // let mut page = telegraph.create_page();
     // page.author_name("Fireinrain").
     //     title("hello world")

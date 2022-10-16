@@ -21,13 +21,14 @@ mod tests {
        };
         use rusqlite::{Connection};
         let client = Connection::open(Path::new("/Users/sunrise/.images-to-telegraph/images2telegraph.db")).unwrap();
-        let insert_sql = "insert into account (short_name, author_name, access_token,auth_url, page_count) values (?1, ?2, ?3, ?4, ?5)";
+        let insert_sql = "insert into account (short_name, author_name, author_url,access_token,auth_url, page_count) values (?1, ?2, ?3, ?4, ?5,?6)";
 
         let insert_account = client.execute(insert_sql, (
             &fake_account.short_name.unwrap(),
             &fake_account.author_name.unwrap(),
-            &fake_account.access_token.unwrap(),
             &fake_account.author_url.unwrap(),
+            &fake_account.access_token.unwrap(),
+            &fake_account.auth_url.unwrap(),
             &fake_account.page_count.unwrap()
         )).unwrap();
 
