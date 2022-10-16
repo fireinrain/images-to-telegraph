@@ -60,6 +60,7 @@ fn main() -> Result<()> {
         let post_sql = "create table if not exists post(
             id    INTEGER PRIMARY KEY,
             images_folder  TEXT NOT NULL,
+            folder_hash TEXT NOT NULL,
             photo_counts INTEGER,
             access_url TEXT NOT NULL,
             update_time TEXT NOT NULL
@@ -69,6 +70,41 @@ fn main() -> Result<()> {
         if success_flag > 0 {
             println!("创建post表成功!")
         }
+    }else {
+        //存在db 但是不存在表
+        let conn = Connection::open(&db_file_path)?;
+        let tables_str = "select tbl_name from sqlite_master where tbl_name in ('account','post')";
+        let mut sts = conn.prepare(tables_str)?;
+        if !sts.exists([])?{
+            let account_sql = "create table  if not exists account(
+            id    INTEGER PRIMARY KEY,
+            short_name  TEXT NOT NULL,
+            author_name TEXT NOT NULL,
+            access_token TEXT NOT NULL,
+            auth_url TEXT NOT NULL,
+            page_count  INTEGER
+        )";
+            // 创建用户表
+            // empty list of parameters.
+            let success_flag = conn.execute(account_sql, ())?;
+            if success_flag > 0 {
+                println!("创建account表成功!")
+            }
+            let post_sql = "create table if not exists post(
+            id    INTEGER PRIMARY KEY,
+            images_folder  TEXT NOT NULL,
+            folder_hash TEXT NOT NULL,
+            photo_counts INTEGER,
+            access_url TEXT NOT NULL,
+            update_time TEXT NOT NULL
+        )";
+            // 创建post表
+            let success_flag = conn.execute(post_sql, ())?;
+            if success_flag > 0 {
+                println!("创建post表成功!")
+            }
+
+        }
     }
     // 有db文件是否已经创建了账户
     let conn = Connection::open(&db_file_path)?;
@@ -77,27 +113,32 @@ fn main() -> Result<()> {
     if !statement.exists([])?{
         println!("当前数据库中暂无账号!");
         // 获取用户输入创建账号
-        let need_create_account = prompt("是否需要创建telegraph账户? (yY/nN): ").unwrap().to_lowercase();
-        let option_y = "y".to_string();
-        match need_create_account == option_y{
-            true => {
-                let telegraph = Telegraph::new();
+        let need_create_account = prompt("是否需要创建telegraph账户? (yY/nN): ");
+        match need_create_account {
+            Some( value) => {
+                if value.trim() == "y" {
+                    let telegraph = Telegraph::new();
 
-                let mut account = telegraph.create_account();
-                let tg_account = account.short_name("Fireinrain")
-                    .author_name("Fireinrain with cosmos")
-                    .author_url("https://fireinrain.github.io").send().unwrap();
-                println!("{:#?}",tg_account);
+                    let mut account = telegraph.create_account();
+                    let tg_account = account.short_name("Fireinrain")
+                        .author_name("Fireinrain with cosmos")
+                        .author_url("https://fireinrain.github.io").send().unwrap();
+                    // println!("{:#?}",tg_account);
+                    //存入本地db
+                    let telegraph_account = Account {
+                        ..tg_account
+                    };
+                    println!("{:#?}",telegraph_account)
 
+                }else {
+                    println!("创建telegraph账户已取消！");
+                }
             },
-
-            _ =>{
-                println!("创建telegraph账户已取消！");
+            None =>{
+                // println!("创建telegraph账户已取消！");
+                // ignore
             }
-
         }
-
-
     }else {
         // 已经有账号
         let _result_iter = statement.query_map([], |row| {
