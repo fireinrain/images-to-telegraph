@@ -2,7 +2,6 @@ mod tests;
 
 use std::{fs, io, panic};
 use std::io::{BufRead, Write};
-use std::ops::Add;
 use std::path::{Path};
 use telegraph_rs::telegraph::Telegraph;
 use rusqlite::{Connection};
@@ -222,7 +221,7 @@ fn main() {
         }
     } else {
         // 已经有账号
-        let mut result_iter = statement.query_map([], |row| {
+        let result_iter = statement.query_map([], |row| {
             Ok(TelegraphAccount {
                 id: row.get(0)?,
                 short_name: row.get(1)?,
