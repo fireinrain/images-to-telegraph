@@ -2,13 +2,16 @@ mod tests;
 
 use std::{fs, io, panic};
 use std::io::{BufRead, Write};
+use std::ops::Add;
 use std::path::{Path};
 use telegraph_rs::telegraph::Telegraph;
 use rusqlite::{Connection};
+use telegraph_rs::types::Node;
 
 
 const USER_HOME_DIR: &str = ".images-to-telegraph";
 const DB_FILE_NAME: &str = "images2telegraph.db";
+const TELEGRAPH_BASE_URL: &str = "https://telegra.ph/";
 
 
 // 账户
@@ -26,15 +29,29 @@ struct TelegraphAccount {
 
 impl Clone for TelegraphAccount {
     fn clone(&self) -> Self {
-        return TelegraphAccount{
+        return TelegraphAccount {
             id: self.id,
             short_name: Option::from(self.short_name.as_ref().unwrap().to_string()),
             author_name: Option::from(self.author_name.as_ref().unwrap().to_string()),
-            author_url: Option::from(self.auth_url.as_ref().unwrap().to_string()),
+            author_url: Option::from(self.author_url.as_ref().unwrap().to_string()),
             access_token: Option::from(self.access_token.as_ref().unwrap().to_string()),
             auth_url: Option::from(self.auth_url.as_ref().unwrap().to_string()),
-            page_count: Option::from(self.page_count.unwrap())
-        }
+            page_count: self.page_count,
+        };
+    }
+}
+
+impl TelegraphAccount {
+    fn new_empty() -> Self {
+        return TelegraphAccount {
+            id: None,
+            short_name: None,
+            author_name: None,
+            author_url: None,
+            access_token: None,
+            auth_url: None,
+            page_count: None,
+        };
     }
 }
 
@@ -140,7 +157,7 @@ fn main() {
     let account_query_str = "select * from account limit 1";
     let mut statement = conn.prepare(account_query_str).unwrap();
 
-    let exist_account:TelegraphAccount;
+    let mut exist_account: TelegraphAccount = TelegraphAccount::new_empty();
     if !statement.exists([]).unwrap() {
         println!("No account in local db file!");
         // 获取用户输入创建账号
@@ -155,7 +172,7 @@ fn main() {
                     let tg_account = account.short_name("Fireinrain")
                         .author_name("Fireinrain with cosmos")
                         .author_url("https://fireinrain.github.io").send().unwrap();
-                    println!("{:#?}",tg_account);
+                    println!("{:#?}", tg_account);
                     //存入本地db
                     let telegraph_account = TelegraphAccount {
                         id: None,
@@ -166,7 +183,7 @@ fn main() {
                         auth_url: tg_account.auth_url,
                         page_count: tg_account.page_count,
                     };
-                    println!("{:#?}",telegraph_account);
+                    println!("{:#?}", telegraph_account);
                     exist_account = telegraph_account.clone();
 
                     let insert_sql = "insert into account(short_name,author_name,author_url,access_token,auth_url,page_count) values (?1,?2,?3,?4,?5,?6)";
@@ -221,17 +238,31 @@ fn main() {
             println!("Found account in db {:#?}", exist_account);
             break;
         }
-
     }
     println!("use local db account for default...");
     // 上传新的post 到telegraph 并将浏览链接
     // 保存到db
-    // println!("{:#?}",exist_account);
+    // println!("{:#?}", exist_account);
     let telegraph = Telegraph::new();
     let mut page = telegraph.create_page();
-    // page.author_name("Fireinrain").
-    //     title("hello world")
-    //     .send().expect("error");
+
+    let access_token = exist_account.access_token.unwrap();
+    let mut vec = Vec::<Node>::new();
+    vec.push(Node::String("a".to_string()));
+    vec.push(Node::String("b".to_string()));
+    let result = page.access_token(&access_token)
+        .title("this is a test")
+        .author_url("https://github.com/")
+        .content(vec)
+        .send().unwrap();
+
+    let post_visit_url = TELEGRAPH_BASE_URL.to_string() + &result.path;
+    println!("Create post success, visit url: {}", post_visit_url);
+
+    // TODO need impliment;
+    //保存访问链接
+    //Hash 图片文件夹
+    //设置图片post
 }
 
 // 等待用户输入
