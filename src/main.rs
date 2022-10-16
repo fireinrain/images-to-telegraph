@@ -1,4 +1,5 @@
-use std::{fs, panic};
+use std::{fs, io, panic};
+use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
 use telegraph_rs::telegraph::Telegraph;
 use rusqlite::{Connection, Result};
@@ -74,20 +75,44 @@ fn main() -> Result<()> {
     let account_query_str = "select * from account limit 1";
     let mut statement = conn.prepare(account_query_str)?;
     if !statement.exists([])?{
-        println!("数据库中暂无账号!")
+        println!("当前数据库中暂无账号!");
         // 获取用户输入创建账号
+        let need_create_account = prompt("是否需要创建telegraph账户? (yY/nN): ").unwrap().to_lowercase();
+        let option_y = "y".to_string();
+        match need_create_account == option_y{
+            true => {
+                let telegraph = Telegraph::new();
 
+                let mut account = telegraph.create_account();
+                let tg_account = account.short_name("Fireinrain")
+                    .author_name("Fireinrain with cosmos")
+                    .author_url("https://fireinrain.github.io").send().unwrap();
+                println!("{:#?}",tg_account);
+
+            },
+
+            _ =>{
+                println!("创建telegraph账户已取消！");
+            }
+
+        }
+
+
+    }else {
+        // 已经有账号
+        let _result_iter = statement.query_map([], |row| {
+            Ok(Account {
+                short_name: row.get(0)?,
+                author_name: row.get(1)?,
+                author_url: row.get(2)?,
+                access_token: row.get(3)?,
+                auth_url: row.get(4)?,
+                page_count: row.get(5)?
+            })
+        })?;
     }
-    let _result_iter = statement.query_map([], |row| {
-        Ok(Account {
-            short_name: row.get(0)?,
-            author_name: row.get(1)?,
-            author_url: row.get(2)?,
-            access_token: row.get(3)?,
-            auth_url: row.get(4)?,
-            page_count: row.get(5)?
-        })
-    })?;
+
+
 
     // 没有账户创建账户
 
@@ -95,16 +120,25 @@ fn main() -> Result<()> {
     // 保存到db
 
 
-    // let telegraph = Telegraph::new();
-    // let mut account = telegraph.create_account();
-    // let tg_account = account.short_name("Fireinrain")
-    //     .author_name("Fireinrain with cosmos")
-    //     .author_url("https://fireinrain.github.io").send().unwrap();
-    // println!("{:#?}",tg_account);
 
     // let mut page = telegraph.create_page();
     // page.author_name("Fireinrain").
     //     title("hello world")
     //     .send().expect("error");
     Ok(())
+}
+
+// 等待用户输入
+fn prompt(message: &str) -> Option<String> {
+    let stdout = io::stdout();
+    let mut stdout = stdout.lock();
+    stdout.write_all(message.as_bytes()).unwrap();
+    stdout.flush().unwrap();
+
+    let stdin = io::stdin();
+    let mut stdin = stdin.lock();
+
+    let mut line = String::new();
+    stdin.read_line(&mut line).unwrap();
+    Some(line)
 }
