@@ -332,7 +332,7 @@ version = "0.1.0"
 dependencies = [
  "home",
  "rusqlite",
- "telegraph-rs",
+ "telegraph-api-rs",
 ]
 
 [[package]]
@@ -740,9 +740,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "telegraph-rs"
-version = "0.0.1"
-source = "git+https://github.com/heyyyoyy/telegraph-rs#dc17ab0737182ecd3f7e16491705707ab1878e67"
+name = "telegraph-api-rs"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce44293b74ccb9cbca8c7bff484a0943b9c22e54d404c5376c99f06f994bc81d"
 dependencies = [
  "reqwest",
  "serde",

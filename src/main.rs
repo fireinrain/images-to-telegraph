@@ -1,11 +1,11 @@
 mod tests;
 
-use std::{fs, io, panic};
+use std::{fs, io, panic, env};
 use std::io::{BufRead, Write};
 use std::path::{Path};
-use telegraph_rs::telegraph::Telegraph;
+use telegraph_api_rs::{Telegraph, Request};
 use rusqlite::{Connection};
-use telegraph_rs::types::Node;
+use telegraph_api_rs::types::Node;
 
 
 const USER_HOME_DIR: &str = ".images-to-telegraph";
@@ -56,6 +56,9 @@ impl TelegraphAccount {
 
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
+    println!("{:?}", args);
+
     // 找到用户目录
     let home_path = match home::home_dir() {
         None => {
@@ -277,4 +280,14 @@ fn prompt(message: &str) -> Option<String> {
     let mut line = String::new();
     stdin.read_line(&mut line).unwrap();
     Some(line)
+}
+
+// 从输入参数获取标题
+fn get_title_from_args(args: &Vec<String>) -> Option<String> {
+    Some("S".to_string())
+}
+
+// 从输入参数获取图片列表
+fn get_images_from_args(args: &Vec<String>) -> Option<Vec<String>> {
+    None
 }

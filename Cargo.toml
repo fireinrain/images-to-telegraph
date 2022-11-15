@@ -8,4 +8,4 @@ edition = "2021"
 [dependencies]
 home = "0.5.4"
 rusqlite = { version = "0.28.0", features = ["bundled"] }
-telegraph-rs = {git="https://github.com/heyyyoyy/telegraph-rs"}
+telegraph-api-rs = "0.1.1"
