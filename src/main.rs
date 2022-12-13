@@ -57,7 +57,19 @@ impl TelegraphAccount {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
+    let images_path: &str;
     println!("{:?}", args);
+    if args.len() <= 1 {
+        println!("usage: images-to-telegram -d <images_folder>");
+        return;
+    } else if args.len() == 3 {
+        let para = args.get(1).unwrap();
+        if para != "-d"{
+            println!("usage: images-to-telegram -d <images_folder>");
+            return;
+        }
+        images_path = args.get(2).unwrap();
+    }
 
     // 找到用户目录
     let home_path = match home::home_dir() {
@@ -280,14 +292,4 @@ fn prompt(message: &str) -> Option<String> {
     let mut line = String::new();
     stdin.read_line(&mut line).unwrap();
     Some(line)
-}
-
-// 从输入参数获取标题
-fn get_title_from_args(args: &Vec<String>) -> Option<String> {
-    Some("S".to_string())
-}
-
-// 从输入参数获取图片列表
-fn get_images_from_args(args: &Vec<String>) -> Option<Vec<String>> {
-    None
 }
