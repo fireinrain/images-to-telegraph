@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use std::path::Path;
-    use telegraph_rs::types::Account;
+    use telegraph_api_rs::types::Account;
 
     #[test]
     fn it_works() {
